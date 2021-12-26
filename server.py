@@ -34,8 +34,8 @@ winner = 0
 
 
 def start_server():
-    print(colors.OKBLUE+"Server started, listening on IP address " +
-          server_ip + "" + colors.ENDC)
+    # print(colors.OKBLUE+"Server started, listening on IP address " +
+    #       server_ip + "" + colors.ENDC)
     connection = False
     start_time = time.time()
     while time.time() - start_time < connection_time:
@@ -43,7 +43,8 @@ def start_server():
             connection = True
             _thread.start_new_thread(offer_UDP_connection, (start_time,))
             _thread.start_new_thread(TCP_connection, (start_time,))
-    game()
+    if client_player1 and client_player2:
+        game()
 
 
 def offer_UDP_connection(start_time):
@@ -93,7 +94,7 @@ def TCP_connection(start_time):
         except OSError:
             break
 
-    serverSocket_TCP_Master.close()
+    # serverSocket_TCP_Master.close()
 
 
 def game():
@@ -103,6 +104,7 @@ def game():
     :return:
     """
     global winner
+    winner=0
     player1Name = ''
     player2Name = ''
     if client_player1:
@@ -130,8 +132,8 @@ def game():
 
     # stop_game= False
 
-    e.wait(timeout=game_time)
-    # time.sleep(game_time)
+    # e.wait(timeout=game_time)
+    time.sleep(game_time)
     stop_game = True
 
     msg_end = "Game over!\nThe correct answer was 4!\n"
@@ -155,6 +157,9 @@ def game():
         except ConnectionError:
             pass
 
+    # connection_socket_list=[]
+    # client_player1={}
+    # client_player2={}
     print(colors.FAIL + "\nGame over, sending out offer requests...\n" + colors.ENDC)
     # serverSocket_TCP_Master.close()
 
@@ -179,23 +184,24 @@ def game_of_client(player_Num, connection_socket):
             if key == '4':
                 # winner=1
                 if player_Num == 1:
-
+                    
                     # print(player_Num)
                     winner = 1
-                    e.set()
-
+                    # e.set()
                 elif player_Num == 2:
                     winner = 2
-                    e.set()
-            else:
+                    # e.set()
+            elif key != '4':
                 if player_Num == 1:
 
                     winner = 2
-                    e.set()
+                    # e.set()
+                    
 
                 elif player_Num == 2:
                     winner = 1
-                    e.set()
+                    # e.set()
+                    break
 
     except ConnectionError:
         pass
@@ -203,10 +209,15 @@ def game_of_client(player_Num, connection_socket):
     # connection_socket.close()
 
 
+print(colors.OKBLUE+"Server started, listening on IP address " +
+      server_ip + "" + colors.ENDC)
 while True:
     # client_player1 = {}
     # client_player2 = {}
     # connection_socket_list = []
     start_server()
+    # connection_socket_list=[]
+    # client_player1={}
+    # client_player2={}
     # serverSocket_UDP.close()
     # serverSocket_TCP_Master.close()

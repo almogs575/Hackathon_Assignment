@@ -33,8 +33,8 @@ def UDP_connection():
     clientSocket.bind(('', serverPort))
     # print("Client started, listening for offer requests...")
     while True:
-    # try:
-        
+        # try:
+
         message, serverAddress = clientSocket.recvfrom(1024)
         unpacked_message = struct.unpack('QQQ', message)
         # print(str(unpacked_message[0]))
@@ -43,10 +43,11 @@ def UDP_connection():
             server_tcp_port = unpacked_message[2]
             (ip, port) = serverAddress
             print(colors.OKGREEN + "Received offer from " +
-                    ip + ", attempting to connect..." + colors.ENDC)
-            return ip, server_tcp_port
+                  ip + ", attempting to connect..." + colors.ENDC)
+            break
+    return ip, server_tcp_port
     # except:
-        # continue
+    # continue
 
 
 def TCP_connection(ip, server_tcp_port, clientSocket):
@@ -92,7 +93,7 @@ def game(clientSocket):
     #     print(stop_message)
     #     break
 
-    # clientSocket.close()
+    clientSocket.close()
 
 
 print(colors.OKBLUE + "Client started, listening for offer requests..." + colors.ENDC)
