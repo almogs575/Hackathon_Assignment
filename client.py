@@ -5,7 +5,7 @@ from socket import *
 import struct
 # import getchמ
 import keyboard
-message_code = 4276993775
+message_code = 2882395322
 
 
 def on_press(key):
@@ -33,19 +33,20 @@ def UDP_connection():
     clientSocket.bind(('', serverPort))
     # print("Client started, listening for offer requests...")
     while True:
-        try:
-            message, serverAddress = clientSocket.recvfrom(1024)
-            unpacked_message = struct.unpack('QQQ', message)
-            # print(str(unpacked_message[0]))
-            if unpacked_message[0] == message_code:
-                clientSocket.close()
-                server_tcp_port = unpacked_message[2]
-                (ip, port) = serverAddress
-                print(colors.OKGREEN + "Received offer from " +
-                      ip + ", attempting to connect..." + colors.ENDC)
-                return ip, server_tcp_port
-        except:
-            continue
+    # try:
+        
+        message, serverAddress = clientSocket.recvfrom(1024)
+        unpacked_message = struct.unpack('QQQ', message)
+        # print(str(unpacked_message[0]))
+        if unpacked_message[0] == message_code and unpacked_message[1] == 2:
+            clientSocket.close()
+            server_tcp_port = unpacked_message[2]
+            (ip, port) = serverAddress
+            print(colors.OKGREEN + "Received offer from " +
+                    ip + ", attempting to connect..." + colors.ENDC)
+            return ip, server_tcp_port
+    # except:
+        # continue
 
 
 def TCP_connection(ip, server_tcp_port, clientSocket):

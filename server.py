@@ -18,7 +18,7 @@ serverSocket_TCP_Master = socket(AF_INET, SOCK_STREAM)
 # server_ip = get_if_addr('eth1')
 server_ip = gethostbyname(gethostname())
 serverSocket_TCP_Master.bind((server_ip, server_tcp_port))
-magic_cookie = 0xfeedbeef
+magic_cookie = 0xabcddcba
 message_type = 0x2
 
 # global stop_game,winner
