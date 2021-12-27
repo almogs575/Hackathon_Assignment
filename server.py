@@ -6,61 +6,99 @@ import struct
 from colors import colors
 # from scapy.arch import get_if_addr
 import threading
+from random import randrange
 
-
-e = threading.Event()
-serverPort = 13117
+# e = threading.Event()
+# serverPort = 13117
 server_tcp_port = 2025
-serverSocket_UDP = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
-serverSocket_UDP.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
+# serverSocket_UDP = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
+# serverSocket_UDP.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
 
-serverSocket_TCP_Master = socket(AF_INET, SOCK_STREAM)
-# server_ip = get_if_addr('eth1')
-server_ip = gethostbyname(gethostname())
-serverSocket_TCP_Master.bind((server_ip, server_tcp_port))
-magic_cookie = 0xabcddcba
-message_type = 0x2
+# serverSocket_TCP = socket(AF_INET, SOCK_STREAM)
+# # server_ip = get_if_addr('eth1')
+# server_ip = gethostbyname(gethostname())
+# serverSocket_TCP.bind((server_ip, server_tcp_port))
+# serverSocket_TCP.listen(1)
+# magic_cookie = 0xabcddcba
+# message_type = 0x2
 
 # global stop_game,winner
 client_player1 = {}
 client_player2 = {}
 connection_socket_list = []
 stop_game = False
-num_of_threads = []
-connection_time = 10
-game_time = 10
+# num_of_threads = []
+# connection_time = 10
+# game_time = 10
 # global winner
+math_result = 0
 winner = 0
 
 
+def start_over(TCPServerSocket):
+    global client_player1
+    client_player1 = {}
+    global client_player2
+    client_player1 = {}
+    # global PLAYERS
+    # PLAYERS={}
+    # global Group1_counter
+    # Group1_counter = 0
+    # global Group2_counter
+    # Group2_counter = 0
+    # global kill_thread
+    # kill_thread = True
+    global connection_socket_list
+    connection_socket_list = []
+    global winner
+    winner = 0
+
+    TCPServerSocket.close()
+    start_server()
+
+
 def start_server():
-    # print(colors.OKBLUE+"Server started, listening on IP address " +
-    #       server_ip + "" + colors.ENDC)
+
+    serverSocket_UDP = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
+    serverSocket_UDP.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
+
+    serverSocket_TCP = socket(AF_INET, SOCK_STREAM)
+    # server_ip = get_if_addr('eth1')
+    server_ip = gethostbyname(gethostname())
+    serverSocket_TCP.bind((server_ip, server_tcp_port))
+    serverSocket_TCP.listen(1)
+    print(colors.OKBLUE+"Server started, listening on IP address " +
+          server_ip + "" + colors.ENDC)
     connection = False
     start_time = time.time()
-    while time.time() - start_time < connection_time:
+    while time.time() - start_time < 10:
         if not connection:
             connection = True
-            _thread.start_new_thread(offer_UDP_connection, (start_time,))
-            _thread.start_new_thread(TCP_connection, (start_time,))
+            _thread.start_new_thread(
+                offer_UDP_connection, (start_time, serverSocket_UDP))
+            _thread.start_new_thread(
+                TCP_connection, (start_time, serverSocket_TCP))
     if client_player1 and client_player2:
         game()
+        start_over(serverSocket_TCP)
+    else:
+        # start_server()
+        start_over(serverSocket_TCP)
 
 
-def offer_UDP_connection(start_time):
+def offer_UDP_connection(start_time, serverSocket_UDP):
     """
     send broadcast to get udp connection
     :param start_time: when the connection open
     :return: finish after the given time
     """
-    while time.time() - start_time < connection_time:
-        message = struct.pack('QQQ', magic_cookie,
-                              message_type, server_tcp_port)
-        serverSocket_UDP.sendto(message, ('<broadcast>', serverPort))
+    while time.time() - start_time < 10:
+        message = struct.pack('QQQ', 0xabcddcba, 0x2, server_tcp_port)
+        serverSocket_UDP.sendto(message, ('<broadcast>', 13117))
         time.sleep(1)  # send offer every second
 
 
-def TCP_connection(start_time):
+def TCP_connection(start_time, serverSocket_TCP):
     """
     do tcp connection, get connection_socket and save it for each client
     :param start_time: when the connection open
@@ -70,10 +108,10 @@ def TCP_connection(start_time):
     # client_player1 = {}
     # client_player2 = {}
     # connection_socket_list = []
-    while time.time() - start_time < connection_time:
+    while time.time() - start_time < 10:
         try:
-            serverSocket_TCP_Master.listen()
-            connection_socket, client_addr = serverSocket_TCP_Master.accept()
+            serverSocket_TCP.listen(1)
+            connection_socket, client_addr = serverSocket_TCP.accept()
             playe_name = connection_socket.recv(1024).decode('utf-8')
 
             if i == 0:
@@ -87,6 +125,7 @@ def TCP_connection(start_time):
                 client_player2['connection_socket'] = connection_socket
                 connection_socket_list.append(connection_socket)
                 client_player2['client_addr'] = client_addr
+                i += 1
         except ConnectionError:
             break
         # except socket.timeout:
@@ -104,7 +143,7 @@ def game():
     :return:
     """
     global winner
-    winner=0
+    winner = 0
     player1Name = ''
     player2Name = ''
     if client_player1:
@@ -112,9 +151,13 @@ def game():
     if client_player2:
         player2Name = client_player2['player_name']
 
+    num1 = randrange(5)
+    num2 = randrange(5)
+    math_result = num1+num2
     msg = "Welcome to Quick Maths.\nPlayer 1: " + player1Name \
           + "\nPlayer 2: " + player2Name + \
-        "\n==\nPlease answer the following question as fast as you can:\nHow much is 2+2?"
+        "\n==\nPlease answer the following question as fast as you can:\nHow much is " + \
+            str(num1) + "+" + str(num2)+"?"
     print(colors.WARNING + msg + colors.ENDC)
     for socket in connection_socket_list:
         try:
@@ -133,10 +176,10 @@ def game():
     # stop_game= False
 
     # e.wait(timeout=game_time)
-    time.sleep(game_time)
+    time.sleep(10)
     stop_game = True
 
-    msg_end = "Game over!\nThe correct answer was 4!\n"
+    msg_end = "Game over!\nThe correct answer was "+str(math_result)+"!\n"
     # winner = check_winner()
 
     if winner == 1:
@@ -153,7 +196,7 @@ def game():
     for socketc in connection_socket_list:
         try:
             socketc.sendall(msg_end.encode())
-            # socketc.close()
+            socketc.close()
         except ConnectionError:
             pass
 
@@ -181,22 +224,21 @@ def game_of_client(player_Num, connection_socket):
             # print(key)
             if not key:
                 break
-            if key == '4':
+            if int(key) == math_result:
                 # winner=1
                 if player_Num == 1:
-                    
+
                     # print(player_Num)
                     winner = 1
                     # e.set()
                 elif player_Num == 2:
                     winner = 2
                     # e.set()
-            elif key != '4':
+            elif int(key) != math_result:
                 if player_Num == 1:
 
                     winner = 2
                     # e.set()
-                    
 
                 elif player_Num == 2:
                     winner = 1
@@ -209,13 +251,16 @@ def game_of_client(player_Num, connection_socket):
     # connection_socket.close()
 
 
-print(colors.OKBLUE+"Server started, listening on IP address " +
-      server_ip + "" + colors.ENDC)
-while True:
+# print(colors.OKBLUE+"Server started, listening on IP address " +
+#       server_ip + "" + colors.ENDC)
+# while True:
+if __name__ == "__main__":
+    # main_server()
     # client_player1 = {}
     # client_player2 = {}
     # connection_socket_list = []
     start_server()
+
     # connection_socket_list=[]
     # client_player1={}
     # client_player2={}
