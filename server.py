@@ -15,7 +15,6 @@ port_tcp = 2025
 port_broadcast = 13117
 players = {}
 lock = threading.Lock()
-threads_list = []
 num_participants = 0
 math_result = 0
 winner = ""
@@ -71,7 +70,6 @@ def TCPServer():
                     num_participants += 1
 
                     try:
-                        # player_name = str(conn_socket.recv(1024), 'utf-8')
                         player_name = conn_socket.recv(1024).decode()
 
                     except:
@@ -109,8 +107,6 @@ def broadcast():
     """
     the broadcast thread starting to sends messeges
     """
-    # start_time = time.time()
-    # global stop_broading
     udp_socket = socket.socket(
         socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
     # Enable port reusage
@@ -119,8 +115,7 @@ def broadcast():
     udp_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 
     message = struct.pack("!IbH", 0xabcddcba, 0x2, port_tcp)
-    # broadcastIP = ip
-    # start_time = time.time()
+    
     while not stop_broading:
         udp_socket.sendto(message, ('172.99.0.255', port_broadcast))
         time.sleep(1)
@@ -158,8 +153,7 @@ def game():
     start_time = time.time()
     while time.time() - start_time < 10 and not stop_game:
         time.sleep(1)
-    # exit_game.wait(9)
-    # stop_game=True
+   
     time.sleep(0.1)
 
     # game over message
@@ -204,20 +198,15 @@ def clientHandler(client_socket, playe_name):
                 if int(data) == math_result:
                     lock.acquire()
                     winner = playe_name
-                    # time.sleep(0.5)
                     stop_game = True
                     lock.release()
-                    # exit_game.set()
 
                 elif int(data) != math_result:
                     lock.acquire()
                     winner = '!' + playe_name
-                    # time.sleep(0.5)
                     stop_game = True
                     lock.release()
-                    # exit_game.set()
 
-                    # break
 
         except:
             stop_game = True
@@ -231,7 +220,7 @@ def default_server():
     """
     returning server to default values before new game
     """
-    global players, threads_list, num_participants, math_result, winner, stop_game, stop_broading
+    global players, num_participants, math_result, winner, stop_game, stop_broading
     players = {}
     stop_game = False
     num_participants = 0

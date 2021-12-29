@@ -60,7 +60,6 @@ def connect_TCP_server(ip_tcp, port_tcp):
         port_tcp 
     """
     tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    # tcp_socket.settimeout(0.2)
     try:
         # connect to server TCP
         tcp_socket.connect((ip_tcp, port_tcp))
