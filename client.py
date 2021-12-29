@@ -42,8 +42,8 @@ def start_client():
 
                 # drop message if magic cookie is wrong or not type 2
                 if magic_cookie == 2882395322 and message_type == 2:
-                    print(colors.OKGREEN + "Received offer from " +
-                          SERVER_ADDRESS + ", attempting to connect..." + colors.ENDC)
+                    # print(colors.OKGREEN + "Received offer from " +
+                    #       SERVER_ADDRESS + ", attempting to connect..." + colors.ENDC)
                     udp_socket.close()
                     # adress[0],#port_tcp
                     connect_TCP_server(SERVER_ADDRESS, port_tcp)
@@ -73,9 +73,9 @@ def connect_TCP_server(ip_tcp, port_tcp):
 
     try:
         open_game_message = tcp_socket.recv(1024).decode()
-        time.sleep(1)
-        # print(colors.OKGREEN + "Received offer from " +
-        #       SERVER_ADDRESS + ", attempting to connect..." + colors.ENDC)
+        time.sleep(2)
+        print(colors.OKGREEN + "Received offer from " +
+              SERVER_ADDRESS + ", attempting to connect..." + colors.ENDC)
         if open_game_message:
             print(colors.WARNING + open_game_message + colors.ENDC)
         else:
