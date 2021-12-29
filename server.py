@@ -11,7 +11,7 @@ from random import randrange
 
 # globals
 name = socket.gethostname()
-SERVER_ADDRESS = get_if_addr('eth1')
+SERVER_ADDRESS = get_if_addr('eth2')
 port_tcp = 2025
 port_broadcast = 13117
 players = {}
@@ -53,6 +53,7 @@ def TCPServer():
         except:
             continue
 
+    
         startBroadcasting()  # split to new thread
         tcp_socket.listen()
         # random math problem
@@ -60,7 +61,7 @@ def TCPServer():
         num2 = randrange(5)
         math_result = num1+num2
         # start_time = time.time()
-        while num_participants == 0:  # TODO with 2 players
+        while num_participants != 2:#TODO with 2 players
 
             try:
                 # establish connection with client
@@ -85,10 +86,10 @@ def TCPServer():
             except:
                 pass
 
-        if num_participants > 0:  # TODO#need to work only with 2 clients
+        if num_participants ==2:# TODO#need to work only with 2 clients
             start_time = time.time()
             while time.time() - start_time < 10:
-                time.sleep(1)
+                time.sleep(1)                          
             game()
         tcp_socket.close()
         print(colors.FAIL + "\nGame over, sending out offer requests...\n" + colors.ENDC)
@@ -190,7 +191,7 @@ def clientHandler(client_socket, playe_name):
         client_socket 
         playe_name 
     """
-    global winner, stop_game, num_participants
+    global winner, stop_game,num_participants
     while not stop_game:
         try:
             # data received from client
@@ -221,9 +222,8 @@ def clientHandler(client_socket, playe_name):
         except:
             pass
     lock.acquire()
-    num_participants -= 1
+    num_participants-=1    
     lock.release()
-
 
 def default_server():
     """

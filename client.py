@@ -8,9 +8,9 @@ from KBHit import KBHit
 
 # globals
 
-SERVER_ADDRESS = get_if_addr('eth1')
+SERVER_ADDRESS = get_if_addr('eth2')
 port_broadcast = 13117
-# port_tcp = 2025
+tcp_port = 2025
 player_name = "TheLastRound"
 kb = KBHit()
 
@@ -40,13 +40,13 @@ def start_client():
                 magic_cookie, message_type, port_tcp = struct.unpack(
                     ">IbH", message)
 
-                # print(colors.OKGREEN + "Received offer from " +
-                #       SERVER_ADDRESS + ", attempting to connect..." + colors.ENDC)
                 # drop message if magic cookie is wrong or not type 2
                 if magic_cookie == 2882395322 and message_type == 2:
+                    print(colors.OKGREEN + "Received offer from " +
+                          SERVER_ADDRESS + ", attempting to connect..." + colors.ENDC)
                     udp_socket.close()
                     # adress[0],#port_tcp
-                    connect_TCP_server(SERVER_ADDRESS, port_tcp)
+                    connect_TCP_server(SERVER_ADDRESS, tcp_port)
             except:
                 time.sleep(0.2)
                 # continue
@@ -73,9 +73,9 @@ def connect_TCP_server(ip_tcp, port_tcp):
 
     try:
         open_game_message = tcp_socket.recv(1024).decode()
-        time.sleep(2)
-        print(colors.OKGREEN + "Received offer from " +
-              SERVER_ADDRESS + ", attempting to connect..." + colors.ENDC)
+        time.sleep(1)
+        # print(colors.OKGREEN + "Received offer from " +
+        #       SERVER_ADDRESS + ", attempting to connect..." + colors.ENDC)
         if open_game_message:
             print(colors.WARNING + open_game_message + colors.ENDC)
         else:
@@ -94,17 +94,12 @@ def connect_TCP_server(ip_tcp, port_tcp):
             except:
                 pass
             if data:
-                # data = str(data, 'utf-8')
                 print(colors.OKGREEN + data + colors.ENDC)
                 break
             else:
 
                 if not key:
                     if kb.kbhit():
-                        # dr, dw, de = select([sys.stdin], [], [], 0)
-                        # if dr != []:
-                        # TODO need to change to linux
-                        # key = _getch()
                         key = kb.getch()
                         print(key)
                         tcp_socket.send(bytes(key, encoding='utf8'))
