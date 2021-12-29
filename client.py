@@ -8,7 +8,7 @@ from KBHit import KBHit
 
 # globals
 
-SERVER_ADDRESS = get_if_addr('eth1')
+SERVER_ADDRESS = get_if_addr('eth2')
 port_broadcast = 13117
 # tcp_port = 2025
 player_name = "TheLastRound"

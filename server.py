@@ -11,7 +11,7 @@ from random import randrange
 
 # globals
 name = socket.gethostname()
-SERVER_ADDRESS = get_if_addr('eth1')
+SERVER_ADDRESS = get_if_addr('eth2')
 port_tcp = 2025
 port_broadcast = 13117
 players = {}
@@ -86,7 +86,6 @@ def TCPServer():
             except:
                 stop_broading = True
                 break
-                
 
         if num_participants == 2:  # TODO#need to work only with 2 clients
             stop_broading = True
@@ -125,7 +124,7 @@ def broadcast():
     # broadcastIP = ip
     # start_time = time.time()
     while not stop_broading:
-        udp_socket.sendto(message, ('<broadcast>', port_broadcast))
+        udp_socket.sendto(message, ('172.99.255.255', port_broadcast))
         time.sleep(1)
 
 
@@ -168,7 +167,6 @@ def game():
     # game over message
     msg_end = "Game over!\nThe correct answer was "+str(math_result)+"!\n"
 
-    
     if winner == player1Name or winner == ('!'+player2Name):
         msg_end += "\nCongratulations to the winner: " + player1Name
         # print('here')
@@ -184,7 +182,7 @@ def game():
             players[player].sendall(msg_end.encode())
             players[player].close()
         except:
-            print("error")  
+            print("error")
             pass
 
 
