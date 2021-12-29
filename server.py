@@ -120,11 +120,11 @@ def broadcast():
     # Enable broadcasting mode
     udp_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 
-    message = struct.pack(">IbH", 0xabcddcba, 0x2, port_tcp)
+    message = struct.pack("!IbH", 0xabcddcba, 0x2, port_tcp)
     # broadcastIP = ip
     # start_time = time.time()
     while not stop_broading:
-        udp_socket.sendto(message, ('172.99.255.255', port_broadcast))
+        udp_socket.sendto(message, ('172.99.0.255', port_broadcast))
         time.sleep(1)
 
 
