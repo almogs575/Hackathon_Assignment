@@ -1,133 +1,121 @@
 import socket
-import threading
-import sys
-import os
 import struct
-import random
-import colorama
-from select import select
 from scapy.arch import get_if_addr
 import time
 from colors import colors
-from pynput.keyboard import Listener
-
-name = socket.gethostname()
-SERVER_ADDRESS = socket.gethostbyname(name)
-# ip = ''  # get_if_addr('eth2')
-ip = SERVER_ADDRESS
-port = 13117
-player_name = "almog"
-broadcastIP = ip
-clientSocket=None
-
-def on_press(key):
-    pass
+from KBHit import KBHit
 
 
-def on_release(key):
-    print(key)
-    try:
-        clientSocket.sendall(key.char.encode())
-    except ConnectionError:
-        pass
-    except OSError:
-        pass
+# globals
 
+SERVER_ADDRESS = get_if_addr('eth1')
+port_broadcast = 13117
+# port_tcp = 2025
+player_name = "TheLastRound"
+kb = KBHit()
 
 
 def start_client():
+    """
+    create and run client sockets
+    """
+    print(colors.OKBLUE +
+          "Client started, listening for offer requests..." + colors.ENDC)
     while True:
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-        print(colors.OKBLUE +
-              "Client started, listening for offer requests..." + colors.ENDC)
+        udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        udp_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        udp_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 
-        # text = "Client started, listening for offer requests..."
-        # self.pretty_print(text)
         try:
-            s.bind(('', port))
+            udp_socket.bind(('', port_broadcast))
         except:
-            s.close()
+            udp_socket.close()
             time.sleep(0.2)
             continue
 
-        # Binds client to listen on port self.port. (will be 13117)
+        # binds client to listen on port
         while True:
             try:  # Receives Message
-                message, address = s.recvfrom(1024)
+                message, address = udp_socket.recvfrom(1024)
                 magic_cookie, message_type, port_tcp = struct.unpack(
                     ">IbH", message)
 
-                print(colors.OKGREEN + "Received offer from " +
-                      ip + ", attempting to connect..." + colors.ENDC)
-                # Drop message if magic cookie is wrong \ not type 2
-                # print(bytes.fromhex('0xabcddcba'))
+                # print(colors.OKGREEN + "Received offer from " +
+                #       SERVER_ADDRESS + ", attempting to connect..." + colors.ENDC)
+                # drop message if magic cookie is wrong or not type 2
                 if magic_cookie == 2882395322 and message_type == 2:
-                    s.close()
-                    connectTCPServer(address[0], port_tcp)
+                    udp_socket.close()
+                    # adress[0],#port_tcp
+                    connect_TCP_server(SERVER_ADDRESS, port_tcp)
             except:
                 time.sleep(0.2)
-                continue
-            break
+                # continue
+                break
 
 
-def connectTCPServer(ip_tcp, port_tcp):
-    global clientSocket
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    clientSocket=s
-    # s.settimeout(11)
-    try:  # connect to server via TCP
-        s.connect((ip_tcp, port_tcp))
+def connect_TCP_server(ip_tcp, port_tcp):
+    """
+    connect to the tcp server
+    Args:
+        ip_tcp 
+        port_tcp 
+    """
+    tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    # tcp_socket.settimeout(0.2)
+    try:
+        # connect to server TCP
+        tcp_socket.connect((ip_tcp, port_tcp))
     except:
         pass
 
-    # Sending team name
-    s.send(player_name.encode('utf-8'))
+    # sending team name
+    tcp_socket.send(player_name.encode())
 
-    open_game_massage = s.recv(1024).decode()
-    if open_game_massage:
-        print(colors.WARNING + open_game_massage + colors.ENDC)
-    else:
-        s.close()
-        return
+    try:
+        open_game_message = tcp_socket.recv(1024).decode()
+        time.sleep(2)
+        print(colors.OKGREEN + "Received offer from " +
+              SERVER_ADDRESS + ", attempting to connect..." + colors.ENDC)
+        if open_game_message:
+            print(colors.WARNING + open_game_message + colors.ENDC)
+        else:
+            tcp_socket.close()
+            return
 
-    with Listener(on_press=on_press, on_release=on_release) as listener:
-    # waiting for end game message and stop listening to typing
-        data = clientSocket.recv(1024)
-        print(colors.OKGREEN + data.decode() + colors.ENDC)
-        listener.stop()
+        data = ""
+        key = ""
+        tcp_socket.setblocking(False)  # don't wait while s.recv
+
+        while not data:
+            try:
+                # check if end game messege received from server
+                data = tcp_socket.recv(1024).decode()
+            # break
+            except:
+                pass
+            if data:
+                # data = str(data, 'utf-8')
+                print(colors.OKGREEN + data + colors.ENDC)
+                break
+            else:
+
+                if not key:
+                    if kb.kbhit():
+                        # dr, dw, de = select([sys.stdin], [], [], 0)
+                        # if dr != []:
+                        # TODO need to change to linux
+                        # key = _getch()
+                        key = kb.getch()
+                        print(key)
+                        tcp_socket.send(bytes(key, encoding='utf8'))
+                        time.sleep(0.1)
+
+    except:
+        pass
+
+    print(colors.FAIL +
+          "\nServer disconnected, listening for offer requests..."+colors.ENDC)
+    tcp_socket.close()
 
 
-    # # Playing
-    # data = None
-    # # s.setblocking(False)  # don't wait while s.recv
-    # start_time = time.time()
-    # while time.time() - start_time < 11:  # we wan't timeout in case server stops in the middle
-    #     try:  # check if EndGame packet received from server
-    #         data = s.recv(1024)
-    #     except:
-    #         pass
-    #     if data:
-    #         data = str(data, 'utf-8')
-    #         print(colors.OKGREEN + data + colors.ENDC)
-
-    #         break
-    #     else:  # still typing
-    #         try:
-    #             character_coming, _, _ = select([sys.stdin], [], [], 0.1)
-    #             if character_coming:
-    #                 c = sys.stdin.read(1)
-    #                 print(c)
-    #                 s.send(bytes(c, encoding='utf8'))
-    #         except:
-    #             pass        
-    
-    print(colors.FAIL + "Server disconnected, listening for offer requests..."+colors.ENDC)
-    s.close()
-
-
-# name = socket.gethostname()
-# SERVER_ADDRESS = socket.gethostbyname(name)
-# ip = ''  # get_if_addr('eth2')
 start_client()

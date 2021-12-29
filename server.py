@@ -1,230 +1,225 @@
 import socket
 import time
 import threading
-import random
 from _thread import start_new_thread
-import colorama
 import struct
 from select import select
 from scapy.arch import get_if_addr
 from colors import colors
 from random import randrange
+# from threading import Event
 
-
+# globals
 name = socket.gethostname()
-SERVER_ADDRESS = socket.gethostbyname(name)
-# ip = ''  # get_if_addr('eth2')
-ip = SERVER_ADDRESS
-port = 2025
-toBroadcast = True
-players = []
-# scores = [0, 0]
+SERVER_ADDRESS = get_if_addr('eth1')
+port_tcp = 2025
+port_broadcast = 13117
+players = {}
 lock = threading.Lock()
 threads_list = []
 socket_list = []
-# self.player_statistics = []
-# self.player_key_press = []
-start_game = False
-game_finished = False
 num_participants = 0
 math_result = 0
-winner = 0
+winner = ""
 num1 = 0
 num2 = 0
-
-# def start_server():
-#     startTCPServer()
-# start_new_thread(self.TCPServer)
+stop_game = False
 
 
 def start_server():
-    # Starts TCP Server via a thread.
+    """
+    starts TCP server with a thread.
+    """
+
     thread = threading.Thread(target=TCPServer)
     thread.start()
 
 
-def TCPServer():  # Main thread
-    global num_participants, threads_list, num1, num2, math_result
+def TCPServer():
+    """
+    the tcp thread get the clients
+    """
+    global num_participants, threads_list, num1, num2, math_result, socket_list, players
+    print(colors.OKBLUE+"Server started, listening on IP address " +
+          SERVER_ADDRESS + "" + colors.ENDC)
     while True:
-        # End Game
+        # reset globals
         default_server()
         # Create TCP server welcome socket
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        tcp_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         try:
-            s.bind((ip, port))  # 2025
+            tcp_socket.bind((SERVER_ADDRESS, port_tcp))  # 2025
         except:
             continue
 
-        print(colors.OKBLUE+"Server started, listening on IP address " +
-              ip + "" + colors.ENDC)
-
-        startBroadcasting()  # split to new thread, will be closed after 10 sec
-        # start_new_thread(self.broadcast)
-        s.listen()
+        startBroadcasting()  # split to new thread
+        tcp_socket.listen()
+        # random math problem
         num1 = randrange(5)
         num2 = randrange(5)
         math_result = num1+num2
-        while not start_game:  # while there is no game
-            # establish connection with client
-            client_coming, _, _ = select([s], [], [], 2)
-            if client_coming:
-                c, addr = s.accept()
-                # set gaming for player
-                lock.acquire()
-                num_participants += 1
+        # start_time = time.time()
+        while num_participants == 0:  # TODO with 2 players
 
-                # th=threading.Thread(target=clientHandler,args=(c,))
-                # th.start()
+            try:
+                # establish connection with client
+                client_coming, _, _ = select([tcp_socket], [], [], 2)
+                if client_coming:
+                    conn_socket, addr = tcp_socket.accept()
+                    # set num of players
+                    lock.acquire()
+                    num_participants += 1
 
-                # threads_list.append(th)
-                lock.release()
-                # Start a new thread and return its identifier
-                # th=threading.Thread(target=clientHandler,args=(c,))
-                # th.start()
-                # threads_list.append(th)
-                # if num_participants==2:
+                    try:
+                        # player_name = str(conn_socket.recv(1024), 'utf-8')
+                        player_name = conn_socket.recv(1024).decode()
 
-                start_new_thread(clientHandler, (c,))
+                    except:
+                        pass
+                    # socket for every client
+                    players[player_name] = conn_socket
 
-            # if len(threads_list)==2:
-            # for th in threads_list:
-            #     th.start()
-        # game()
-        while num_participants > 0:
-            # for th in threads_list:
-            #         th.start()
-            time.sleep(1)
+                    lock.release()
 
-        s.close()
-        # self.pretty_print("Game over, sending out offer requests...")
+            except:
+                pass
+
+        if num_participants > 0:  # TODO#need to work only with 2 clients
+            start_time = time.time()
+            while time.time() - start_time < 10:
+                time.sleep(1)
+            game()
+        tcp_socket.close()
         print(colors.FAIL + "\nGame over, sending out offer requests...\n" + colors.ENDC)
-        # start_game = False
 
 
 def startBroadcasting():
-    # Starts Broadcasting via a thread.
+    """
+    creating broadcasting thread
+    """
+    # Starts Broadcasting thread
     thread = threading.Thread(target=broadcast)
+    thread.setDaemon(True)
     thread.start()
 
 
 def broadcast():
-    global start_game
+    """
+    the broadcast thread starting to sends messeges
+    """
     start_time = time.time()
-    server = socket.socket(
+    udp_socket = socket.socket(
         socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
     # Enable port reusage
-    server.setsockopt(socket.SOL_SOCKET,
-                      socket.SO_REUSEADDR, 1)
+    udp_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     # Enable broadcasting mode
-    server.setsockopt(socket.SOL_SOCKET,
-                      socket.SO_BROADCAST, 1)
+    udp_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 
-    message = struct.pack(">IbH", 0xabcddcba, 0x2, port)
-    broadcastIP = ip  # '.'.join(self.ip.split('.')[:2]) + '.255.255'
+    message = struct.pack(">IbH", 0xabcddcba, 0x2, port_tcp)
+    # broadcastIP = ip
+    start_time = time.time()
     while time.time() - start_time < 10:
-        server.sendto(message, (broadcastIP, 13117))
+        udp_socket.sendto(message, ('<broadcast>', port_broadcast))
         time.sleep(1)
-    # if num_participants==2:
-    start_game = True
 
 
-def clientHandler(c):
-    global players, winner, num_participants
-    try:
-        playe_name = str(c.recv(1024), 'utf-8')
-    except:
-        pass
-
-    players += [playe_name]
-
-    # wait until game will start
-    while not start_game:
-        time.sleep(0.1)
-
-    # Sending start message to my client
+def game():
+    """
+    here all the messages are created and sends to clients
+    """
+    global players, winner, num_participants, stop_game
     player1Name = ''
     player2Name = ''
-    # for players in players:
 
-    if players[0]:
-        player1Name = players[0]
+    for name in players.keys():
+        if not player1Name:
+            player1Name = name
+        elif not player2Name:
+            player2Name = name
 
-    if len(players) > 1:
-        player2Name = players[1]
-
-    # num1 = randrange(5)
-    # num2 = randrange(5)
-    # math_result = num1+num2
     msg = "Welcome to Quick Maths.\nPlayer 1: " + player1Name \
         + "\nPlayer 2: " + player2Name + \
         "\n==\nPlease answer the following question as fast as you can:\nHow much is " + \
         str(num1) + "+" + str(num2)+"?"
+
     print(colors.WARNING + msg + colors.ENDC)
 
-    try:
-        c.send(msg.encode())
+    # sending welcome message
+    for player in players.keys():
+        try:
+            players[player].sendall(msg.encode())
+            start_new_thread(clientHandler, (players[player], player))
+        except ConnectionError:
+            pass
 
-    except ConnectionError:
-        pass
-
-    index = players.index(playe_name)
-    # team_index = 0 if playe_name in team1 else 1
-    # While not past 10 seconds - listen to key presses.
     start_time = time.time()
-    while time.time() - start_time < 10:  # play 10 seconds
-        try:  # data received from client
-            rlist, _, _ = select([c], [], [], 0.1)
+    while time.time() - start_time < 10 and not stop_game:
+        time.sleep(1)
+    # exit_game.wait(9)
+    # stop_game=True
+    time.sleep(0.1)
+
+    # game over message
+    msg_end = "Game over!\nThe correct answer was "+str(math_result)+"!\n"
+
+    # player2Name = 'temp'  # TODO need to change
+    if winner == player1Name or winner == ('!'+player2Name):
+        msg_end += "\nCongratulations to the winner: " + player1Name
+        # print('here')
+    elif winner == player2Name or winner == ('!'+player1Name):
+        msg_end += "\nCongratulations to the winner: " + player2Name
+    elif not winner:
+        msg_end += "\nThe game finishes with a draw"
+
+    print(colors.OKGREEN + msg_end + colors.ENDC)
+    # sending ending message to clients
+    for player in players.keys():
+        try:
+            players[player].sendall(msg_end.encode())
+            players[player].close()
+        except:
+            print("error")  # need to delete
+            pass
+
+
+def clientHandler(client_socket, playe_name):
+    """
+    each client send his answer
+    Args:
+        client_socket 
+        playe_name 
+    """
+    global winner, stop_game, num_participants
+    while not stop_game:
+        try:
+            # data received from client
+            rlist, _, _ = select([client_socket], [], [], 0.1)
             if rlist:
-                data = c.recv(1024)  # new key pressings
+                data = client_socket.recv(1024).decode()  # new key pressings
                 if not data:
                     time.sleep(0.1)
                     continue
                 if int(data) == math_result:
-                    # winner=1
-                    if index == 0:
+                    lock.acquire()
+                    winner = playe_name
+                    # time.sleep(0.5)
+                    stop_game = True
+                    lock.release()
+                    # exit_game.set()
 
-                        # print(player_Num)
-                        winner = 1
-                        # e.set()
-                    elif index == 1:
-                        winner = 2
-                        # e.set()
                 elif int(data) != math_result:
-                    if index == 0:
+                    lock.acquire()
+                    winner = '!' + playe_name
+                    # time.sleep(0.5)
+                    stop_game = True
+                    lock.release()
+                    # exit_game.set()
 
-                        winner = 2
-                        # e.set()
-
-                    elif index == 1:
-                        winner = 1
-                        # e.set()
-                        # break
+                    # break
 
         except:
             pass
-
-    # Game Over Message
-    msg_end = "Game over!\nThe correct answer was "+str(math_result)+"!\n"
-# winner = check_winner()
-
-    if winner == 1:
-        msg_end += "\nCongratulations to the winner: " + player1Name
-        # print('here')
-    elif winner == 2:
-        msg_end += "\nCongratulations to the winner: " + player2Name
-    elif winner == 0:
-        msg_end += "\nThe game finishes with a draw"
-
-    print(colors.OKGREEN + msg_end + colors.ENDC)
-
-    try:
-        c.send(msg_end.encode())
-    except:
-        pass
-
-    # connection closed
-    c.close()
     lock.acquire()
     num_participants -= 1
     lock.release()
@@ -232,18 +227,15 @@ def clientHandler(c):
 
 def default_server():
     """
-    Returning Server to default values before new game.
+    returning server to default values before new game
     """
-    global players, threads_list, start_game, game_finished, num_participants, math_result, winner
-
-    players = []
+    global players, threads_list, num_participants, math_result, winner, stop_game
+    players = {}
     threads_list = []
-
-    start_game = False
-    game_finished = False
+    stop_game = False
     num_participants = 0
     math_result = 0
-    winner = 0
+    winner = ""
 
 
 start_server()
