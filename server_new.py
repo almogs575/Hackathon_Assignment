@@ -7,25 +7,26 @@ from select import select
 from scapy.arch import get_if_addr
 from colors import colors
 from random import randrange
+from threading import Event
 
 # globals
+exit_game = Event()
+
 name = socket.gethostname()
 SERVER_ADDRESS = socket.gethostbyname(name)
 # ip = ''  # get_if_addr('eth2')
 ip = SERVER_ADDRESS
 port = 2025
-# toBroadcast = True
 players = {}
 lock = threading.Lock()
 threads_list = []
 socket_list = []
-start_game = False
-game_finished = False
 num_participants = 0
 math_result = 0
 winner = ""
 num1 = 0
 num2 = 0
+stop_game = False
 
 
 def start_server():
@@ -37,7 +38,7 @@ def start_server():
 def TCPServer():
     global num_participants, threads_list, num1, num2, math_result, socket_list, players
     print(colors.OKBLUE+"Server started, listening on IP address " +
-              ip + "" + colors.ENDC)
+          ip + "" + colors.ENDC)
     while True:
         # reset globals
         default_server()
@@ -84,7 +85,7 @@ def TCPServer():
             except:
                 pass
 
-        if num_participants >0:  # TODO#need to work only with 2 clients
+        if num_participants > 0:  # TODO#need to work only with 2 clients
             game()
         tcp_socket.close()
         print(colors.FAIL + "\nGame over, sending out offer requests...\n" + colors.ENDC)
@@ -98,7 +99,6 @@ def startBroadcasting():
 
 
 def broadcast():
-    # global start_game
     start_time = time.time()
     udp_socket = socket.socket(
         socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
@@ -116,7 +116,7 @@ def broadcast():
 
 
 def game():
-    global players, winner, num_participants
+    global players, winner, num_participants, stop_game
     player1Name = ''
     player2Name = ''
 
@@ -141,7 +141,13 @@ def game():
         except ConnectionError:
             pass
     # time for playing
-    time.sleep(10)  # TODO need to wake before
+    # time.sleep(10)  # TODO need to wake before
+    start_time = time.time()
+    while time.time() - start_time < 10 and not stop_game:
+        time.sleep(1)
+    # exit_game.wait(9)
+    # stop_game=True
+    time.sleep(0.1)
 
     # game over message
     msg_end = "Game over!\nThe correct answer was "+str(math_result)+"!\n"
@@ -162,18 +168,19 @@ def game():
             players[player].sendall(msg_end.encode())
             players[player].close()
         except:
-            print("error")
+            print("error")  # need to delete
             pass
 
 
 def clientHandler(client_socket, playe_name):
 
-    global winner
+    global winner, stop_game
 
     # TODO need to wake sleeping threads after first answer
     # while not past 10 seconds
-    start_time = time.time()
-    while time.time() - start_time < 10:
+    # start_time = time.time()
+    # stop_game=False
+    while not stop_game:  # time.time() - start_time < 10 and
         try:
             # data received from client
             rlist, _, _ = select([client_socket], [], [], 0.1)
@@ -183,13 +190,22 @@ def clientHandler(client_socket, playe_name):
                     time.sleep(0.1)
                     continue
                 if int(data) == math_result:
+                    lock.acquire()
                     winner = playe_name
-                    break
+                    # time.sleep(0.5)
+                    stop_game = True
+                    lock.release()
+                    # exit_game.set()
 
                 elif int(data) != math_result:
-
+                    lock.acquire()
                     winner = '!' + playe_name
-                    break
+                    # time.sleep(0.5)
+                    stop_game = True
+                    lock.release()
+                    # exit_game.set()
+
+                    # break
 
         except:
             pass
@@ -199,11 +215,10 @@ def default_server():
     """
     Returning Server to default values before new game.
     """
-    global players, threads_list, start_game, game_finished, num_participants, math_result, winner
+    global players, threads_list, num_participants, math_result, winner, stop_game
     players = {}
     threads_list = []
-    start_game = False
-    game_finished = False
+    stop_game = False
     num_participants = 0
     math_result = 0
     winner = ""

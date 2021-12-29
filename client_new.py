@@ -6,8 +6,14 @@ import time
 from colors import colors
 import time
 import sys
-# import getch /linux
-import msvcrt
+import getch
+# import msvcrt
+import termios
+import tty
+import atexit
+
+
+
 
 # globals
 name = socket.gethostname()
@@ -36,20 +42,33 @@ def start_client():
         # binds client to listen on port
         while True:
             try:  # Receives Message
-                message, address = udp_socket.recvfrom(1024)
-                magic_cookie, message_type, port_tcp = struct.unpack(
-                    ">IbH", message)
+                # message, address = udp_socket.recvfrom(1024)
+                # magic_cookie, message_type, port_tcp = struct.unpack(
+                #     ">IbH", message)
 
                 print(colors.OKGREEN + "Received offer from " +
-                      address[0] + ", attempting to connect..." + colors.ENDC)
+                      SERVER_ADDRESS + ", attempting to connect..." + colors.ENDC)
                 # drop message if magic cookie is wrong or not type 2
-                if magic_cookie == 2882395322 and message_type == 2:
-                    udp_socket.close()
-                    connectTCPServer(address[0], port_tcp)
+                # if magic_cookie == 2882395322 and message_type == 2:
+                udp_socket.close()
+                connectTCPServer(SERVER_ADDRESS, 2025)  # adress[0],#port_tcp
             except:
                 time.sleep(0.2)
                 # continue
                 break
+
+
+def _getch():
+    fd = sys.stdin.fileno()
+    old_settings = termios.tcgetattr(fd)
+    try:
+        tty.setraw(fd)
+        ch = sys.stdin.read(1)  # This number represents the length
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+    return ch
+# getch = _getch()
+# print(getch)
 
 
 def connectTCPServer(ip_tcp, port_tcp):
@@ -89,12 +108,13 @@ def connectTCPServer(ip_tcp, port_tcp):
             else:
 
                 if not key:
-                    if msvcrt.kbhit():  # TODO need to change to linux
-                        key = msvcrt.getch()
-                        # char = getch.getch()
-                        print(key.decode())
-
-                        tcp_socket.send(key)
+                    # if kb.kbhit():
+                    dr, dw, de = select([sys.stdin], [], [], 0)
+                    if dr != []:
+                                        # TODO need to change to linux
+                        key = _getch()
+                        print(key)
+                        tcp_socket.send(bytes(key, encoding='utf8'))
                         time.sleep(0.1)
 
     except:
