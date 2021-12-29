@@ -10,7 +10,7 @@ from KBHit import KBHit
 
 SERVER_ADDRESS = get_if_addr('eth2')
 port_broadcast = 13117
-tcp_port = 2025
+# tcp_port = 2025
 player_name = "TheLastRound"
 kb = KBHit()
 
@@ -46,7 +46,7 @@ def start_client():
                           SERVER_ADDRESS + ", attempting to connect..." + colors.ENDC)
                     udp_socket.close()
                     # adress[0],#port_tcp
-                    connect_TCP_server(SERVER_ADDRESS, tcp_port)
+                    connect_TCP_server(SERVER_ADDRESS, port_tcp)
             except:
                 time.sleep(0.2)
                 # continue
