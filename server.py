@@ -11,7 +11,7 @@ from random import randrange
 
 # globals
 name = socket.gethostname()
-SERVER_ADDRESS = get_if_addr('eth2')
+SERVER_ADDRESS = get_if_addr('eth1')
 port_tcp = 2025
 port_broadcast = 13117
 players = {}
