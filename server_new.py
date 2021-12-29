@@ -7,16 +7,18 @@ from select import select
 from scapy.arch import get_if_addr
 from colors import colors
 from random import randrange
-from threading import Event
+# from threading import Event
 
 # globals
-exit_game = Event()
-
+# exit_game = Event()
 name = socket.gethostname()
-SERVER_ADDRESS = socket.gethostbyname(name)
+# name = 'localhost'
+# SERVER_ADDRESS = socket.gethostbyname(name)
+SERVER_ADDRESS = get_if_addr('eth1')
 # ip = ''  # get_if_addr('eth2')
 ip = SERVER_ADDRESS
-port = 2025
+port_tcp = 2025
+port_broadcast = 13117
 players = {}
 lock = threading.Lock()
 threads_list = []
@@ -30,15 +32,21 @@ stop_game = False
 
 
 def start_server():
-    # Starts TCP Server via a thread.
+    """
+    starts TCP server with a thread.
+    """
+
     thread = threading.Thread(target=TCPServer)
     thread.start()
 
 
 def TCPServer():
+    """
+    the tcp thread get the clients
+    """
     global num_participants, threads_list, num1, num2, math_result, socket_list, players
     print(colors.OKBLUE+"Server started, listening on IP address " +
-          ip + "" + colors.ENDC)
+          SERVER_ADDRESS + "" + colors.ENDC)
     while True:
         # reset globals
         default_server()
@@ -46,7 +54,7 @@ def TCPServer():
         tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         tcp_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         try:
-            tcp_socket.bind((ip, port))  # 2025
+            tcp_socket.bind((SERVER_ADDRESS, port_tcp))  # 2025
         except:
             continue
 
@@ -59,8 +67,8 @@ def TCPServer():
         num1 = randrange(5)
         num2 = randrange(5)
         math_result = num1+num2
-        start_time = time.time()
-        while time.time() - start_time < 10:
+        # start_time = time.time()
+        while num_participants == 0:#TODO with 2 players
 
             try:
                 # establish connection with client
@@ -85,13 +93,19 @@ def TCPServer():
             except:
                 pass
 
-        if num_participants > 0:  # TODO#need to work only with 2 clients
+        if num_participants > 0:# TODO#need to work only with 2 clients
+            start_time = time.time()
+            while time.time() - start_time < 10:
+                time.sleep(1)                          
             game()
         tcp_socket.close()
         print(colors.FAIL + "\nGame over, sending out offer requests...\n" + colors.ENDC)
 
 
 def startBroadcasting():
+    """
+    creating broadcasting thread
+    """
     # Starts Broadcasting thread
     thread = threading.Thread(target=broadcast)
     thread.setDaemon(True)
@@ -99,6 +113,9 @@ def startBroadcasting():
 
 
 def broadcast():
+    """
+    the broadcast thread starting to sends messeges
+    """
     start_time = time.time()
     udp_socket = socket.socket(
         socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
@@ -107,15 +124,18 @@ def broadcast():
     # Enable broadcasting mode
     udp_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 
-    message = struct.pack(">IbH", 0xabcddcba, 0x2, port)
+    message = struct.pack(">IbH", 0xabcddcba, 0x2, port_tcp)
     # broadcastIP = ip
     start_time = time.time()
     while time.time() - start_time < 10:
-        udp_socket.sendto(message, ('<broadcast>', 13117))
+        udp_socket.sendto(message, ('<broadcast>', port_broadcast))
         time.sleep(1)
 
 
 def game():
+    """
+    here all the messages are created and sends to clients
+    """
     global players, winner, num_participants, stop_game
     player1Name = ''
     player2Name = ''
@@ -140,8 +160,7 @@ def game():
             start_new_thread(clientHandler, (players[player], player))
         except ConnectionError:
             pass
-    # time for playing
-    # time.sleep(10)  # TODO need to wake before
+
     start_time = time.time()
     while time.time() - start_time < 10 and not stop_game:
         time.sleep(1)
@@ -173,14 +192,14 @@ def game():
 
 
 def clientHandler(client_socket, playe_name):
-
-    global winner, stop_game
-
-    # TODO need to wake sleeping threads after first answer
-    # while not past 10 seconds
-    # start_time = time.time()
-    # stop_game=False
-    while not stop_game:  # time.time() - start_time < 10 and
+    """
+    each client send his answer
+    Args:
+        client_socket 
+        playe_name 
+    """
+    global winner, stop_game,num_participants
+    while not stop_game:
         try:
             # data received from client
             rlist, _, _ = select([client_socket], [], [], 0.1)
@@ -209,11 +228,13 @@ def clientHandler(client_socket, playe_name):
 
         except:
             pass
-
+    lock.acquire()
+    num_participants-=1    
+    lock.release()
 
 def default_server():
     """
-    Returning Server to default values before new game.
+    returning server to default values before new game
     """
     global players, threads_list, num_participants, math_result, winner, stop_game
     players = {}
