@@ -10,14 +10,12 @@ from random import randrange
 # from threading import Event
 
 # globals
-name = socket.gethostname()
 SERVER_ADDRESS = get_if_addr('eth2')
 port_tcp = 2025
 port_broadcast = 13117
 players = {}
 lock = threading.Lock()
 threads_list = []
-socket_list = []
 num_participants = 0
 math_result = 0
 winner = ""
@@ -40,7 +38,7 @@ def TCPServer():
     """
     the tcp thread get the clients
     """
-    global num_participants, threads_list, num1, num2, math_result, socket_list, players, stop_broading
+    global num_participants, num1, num2, math_result, players, stop_broading
     print(colors.OKBLUE+"Server started, listening on IP address " +
           SERVER_ADDRESS + "" + colors.ENDC)
     while True:
@@ -61,7 +59,7 @@ def TCPServer():
         num2 = randrange(5)
         math_result = num1+num2
         # start_time = time.time()
-        while num_participants != 2:  # TODO with 2 players
+        while num_participants != 2: 
 
             try:
                 # establish connection with client
@@ -87,7 +85,7 @@ def TCPServer():
                 stop_broading = True
                 break
 
-        if num_participants == 2:  # TODO#need to work only with 2 clients
+        if num_participants == 2:
             stop_broading = True
             start_time = time.time()
             while time.time() - start_time < 10:
@@ -235,7 +233,6 @@ def default_server():
     """
     global players, threads_list, num_participants, math_result, winner, stop_game, stop_broading
     players = {}
-    threads_list = []
     stop_game = False
     num_participants = 0
     math_result = 0
