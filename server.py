@@ -77,14 +77,16 @@ def TCPServer():
                         player_name = conn_socket.recv(1024).decode()
 
                     except:
-                        pass
+                        break
                     # socket for every client
                     players[player_name] = conn_socket
 
                     lock.release()
 
             except:
-                pass
+                stop_broading = True
+                break
+                
 
         if num_participants == 2:  # TODO#need to work only with 2 clients
             stop_broading = True
@@ -166,7 +168,7 @@ def game():
     # game over message
     msg_end = "Game over!\nThe correct answer was "+str(math_result)+"!\n"
 
-    # player2Name = 'temp'  # TODO need to change
+    
     if winner == player1Name or winner == ('!'+player2Name):
         msg_end += "\nCongratulations to the winner: " + player1Name
         # print('here')
@@ -182,7 +184,7 @@ def game():
             players[player].sendall(msg_end.encode())
             players[player].close()
         except:
-            print("error")  # need to delete
+            print("error")  
             pass
 
 
@@ -222,7 +224,8 @@ def clientHandler(client_socket, playe_name):
                     # break
 
         except:
-            pass
+            stop_game = True
+            break
     lock.acquire()
     num_participants -= 1
     lock.release()
