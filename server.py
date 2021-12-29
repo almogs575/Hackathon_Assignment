@@ -24,6 +24,7 @@ winner = ""
 num1 = 0
 num2 = 0
 stop_game = False
+stop_broading = False
 
 
 def start_server():
@@ -39,7 +40,7 @@ def TCPServer():
     """
     the tcp thread get the clients
     """
-    global num_participants, threads_list, num1, num2, math_result, socket_list, players
+    global num_participants, threads_list, num1, num2, math_result, socket_list, players, stop_broading
     print(colors.OKBLUE+"Server started, listening on IP address " +
           SERVER_ADDRESS + "" + colors.ENDC)
     while True:
@@ -53,7 +54,6 @@ def TCPServer():
         except:
             continue
 
-    
         startBroadcasting()  # split to new thread
         tcp_socket.listen()
         # random math problem
@@ -61,7 +61,7 @@ def TCPServer():
         num2 = randrange(5)
         math_result = num1+num2
         # start_time = time.time()
-        while num_participants != 2:#TODO with 2 players
+        while num_participants != 2:  # TODO with 2 players
 
             try:
                 # establish connection with client
@@ -86,10 +86,11 @@ def TCPServer():
             except:
                 pass
 
-        if num_participants ==2:# TODO#need to work only with 2 clients
+        if num_participants == 2:  # TODO#need to work only with 2 clients
+            stop_broading = True
             start_time = time.time()
             while time.time() - start_time < 10:
-                time.sleep(1)                          
+                time.sleep(1)
             game()
         tcp_socket.close()
         print(colors.FAIL + "\nGame over, sending out offer requests...\n" + colors.ENDC)
@@ -109,7 +110,8 @@ def broadcast():
     """
     the broadcast thread starting to sends messeges
     """
-    start_time = time.time()
+    # start_time = time.time()
+    # global stop_broading
     udp_socket = socket.socket(
         socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
     # Enable port reusage
@@ -119,8 +121,8 @@ def broadcast():
 
     message = struct.pack(">IbH", 0xabcddcba, 0x2, port_tcp)
     # broadcastIP = ip
-    start_time = time.time()
-    while time.time() - start_time < 10:
+    # start_time = time.time()
+    while not stop_broading:
         udp_socket.sendto(message, ('<broadcast>', port_broadcast))
         time.sleep(1)
 
@@ -191,7 +193,7 @@ def clientHandler(client_socket, playe_name):
         client_socket 
         playe_name 
     """
-    global winner, stop_game,num_participants
+    global winner, stop_game, num_participants
     while not stop_game:
         try:
             # data received from client
@@ -222,20 +224,22 @@ def clientHandler(client_socket, playe_name):
         except:
             pass
     lock.acquire()
-    num_participants-=1    
+    num_participants -= 1
     lock.release()
+
 
 def default_server():
     """
     returning server to default values before new game
     """
-    global players, threads_list, num_participants, math_result, winner, stop_game
+    global players, threads_list, num_participants, math_result, winner, stop_game, stop_broading
     players = {}
     threads_list = []
     stop_game = False
     num_participants = 0
     math_result = 0
     winner = ""
+    stop_broading = False
 
 
 start_server()
